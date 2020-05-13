@@ -1,0 +1,24 @@
+containerd.io/snapshot.ref
+sha256:65d7f1458663705e7eeeae0469ac150a33a1818b5c0c78de3e514511ea43d87b
+
+containerd.io/snapshot/remote/stargz.digest
+sha256:1ed6c7bf08fd1ed574a378a52eb2a5c67e9d6b6adc382e9bf49b39af7426c805
+
+(hashes of .tar.gz，crane pull 下来的tar包中的文件的hash，也是文件的名字)
+containerd.io/snapshot/remote/stargz.layers
+sha256:1ed6c7bf08fd1ed574a378a52eb2a5c67e9d6b6adc382e9bf49b39af7426c805
+sha256:fe154e70014390771c9be43d5eb39a7db267540b478d3d41cc861a2149c3794f
+sha256:e4a6509333c99627f77933b5c53cffd4e2d1639972776269e82c2528c35d13bb
+sha256:2db447a31c2e44bd3f1ef66096c6ff235f7bc09a86614d0b1189c2652897960e
+
+containerd.io/snapshot/remote/stargz.prefetch
+10485760
+
+containerd.io/snapshot/remote/stargz.reference
+registry2:5000/sequix/fio:stargz_256m_4t
+
+(metadata.db中存的是上面.tar.gz解压的.tar的hash)
+sha256:3e6202443312e02e34b2a54c4c8ba073578d8941030ab2d75ace8d3efd5be8fd
+sha256:5c99c8784b73293ad21bb304e1cebab80e14906023a701c7ff5b698f8778f3bf
+sha256:65d7f1458663705e7eeeae0469ac150a33a1818b5c0c78de3e514511ea43d87b
+sha256:7a561495369f50f8c27ba6f77c586a52da7764a74b1a72ec273bca70b417a785

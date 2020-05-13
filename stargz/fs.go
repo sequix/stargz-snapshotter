@@ -171,6 +171,10 @@ type filesystem struct {
 }
 
 func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[string]string) error {
+	ctx = snbase.WithRequestID(ctx)
+	snbase.LF(ctx, "<stargz>.Mount").Debugf("in mountpoint %s, labels %s", mountpoint, labels)
+	defer snbase.LF(ctx, "<stargz>.Mount").Debugf("ot mountpoint %s, labels %s", mountpoint, labels)
+
 	// This is a prioritized task and all background tasks will be stopped
 	// execution so this can avoid being disturbed for NW traffic by background
 	// tasks.
@@ -310,6 +314,10 @@ func (fs *filesystem) Mount(ctx context.Context, mountpoint string, labels map[s
 }
 
 func (fs *filesystem) resolve(ctx context.Context, ref, digest string) *resolveResult {
+	ctx = snbase.WithRequestID(ctx)
+	snbase.LF(ctx, "<stargz>.resolve").Debugf("in ref %s, digest %s", ref, digest)
+	defer snbase.LF(ctx, "<stargz>.resolve").Debugf("ot ref %s, digest %s", ref, digest)
+
 	return newResolveResult(func() (*layer, error) {
 		log.G(ctx).Debugf("resolving (%q, %q)", ref, digest)
 		defer log.G(ctx).Debugf("resolved (%q, %q)", ref, digest)
@@ -339,6 +347,10 @@ func (fs *filesystem) resolve(ctx context.Context, ref, digest string) *resolveR
 }
 
 func (fs *filesystem) Check(ctx context.Context, mountpoint string) error {
+	ctx = snbase.WithRequestID(ctx)
+	snbase.LF(ctx, "<stargz>.Check").Debugf("in mountpoint %s", mountpoint)
+	defer snbase.LF(ctx, "<stargz>.Check").Debugf("ot mountpoint %s", mountpoint)
+
 	// This is a prioritized task and all background tasks will be stopped
 	// execution so this can avoid being disturbed for NW traffic by background
 	// tasks.
@@ -370,6 +382,10 @@ func (fs *filesystem) Check(ctx context.Context, mountpoint string) error {
 }
 
 func (fs *filesystem) check(ctx context.Context, l *layer) error {
+	ctx = snbase.WithRequestID(ctx)
+	snbase.LF(ctx, "<stargz>.Check").Debugf("in")
+	defer snbase.LF(ctx, "<stargz>.Check").Debugf("ot")
+
 	logCtx := log.G(ctx)
 
 	if err := l.blob.Check(); err != nil {

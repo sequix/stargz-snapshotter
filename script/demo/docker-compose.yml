@@ -15,11 +15,13 @@ services:
     - http_proxy=${http_proxy}
     - https_proxy=${https_proxy}
     - GOPATH=/go
+    - GOPROXY=https://goproxy.cn,direct
     tmpfs:
     - /tmp:exec,mode=777
     volumes:
     - /dev/fuse:/dev/fuse
-    - "${GOPATH}/src/github.com/containerd/stargz-snapshotter:/go/src/github.com/containerd/stargz-snapshotter:ro"
+    - "${GOPATH}/src/github.com/sequix/stargz-snapshotter:/go/src/github.com/containerd/stargz-snapshotter"
+    - "/Users/squix/code/imgdis/test/imgs:/imgs"
     - type: volume
       source: demo-containerd-data
       target: /var/lib/containerd

@@ -73,14 +73,17 @@ cleanup
 
 echo "preparing commands..."
 ( cd "${REPO}" && PREFIX=/tmp/out/ make clean && \
-      PREFIX=/tmp/out/ make -j2 && \
-      PREFIX=/tmp/out/ make install )
+     PREFIX=/tmp/out/ make -j2 && \
+     PREFIX=/tmp/out/ make install )
 
-echo "running remote snaphsotter..."
-containerd-stargz-grpc --log-level=debug \
+echo "running remote snapshotter..."
+nohup containerd-stargz-grpc --log-level=debug \
                        --address="${REMOTE_SNAPSHOTTER_SOCKET}" \
-                       --config="${REMOTE_SNAPSHOTTER_CONFIG_DIR}config.stargz.toml" &
+                       --config="${REMOTE_SNAPSHOTTER_CONFIG_DIR}config.stargz.toml" \
+                       &>/var/log/stargz-snapshotter.log &
 retry ls "${REMOTE_SNAPSHOTTER_SOCKET}"
 
 echo "running containerd..."
-containerd --config="${CONTAINERD_CONFIG_DIR}config.containerd.toml" $@ &
+nohup containerd --log-level=debug \
+    --config="${CONTAINERD_CONFIG_DIR}config.containerd.toml" $@ \
+     &>/var/log/containerd.log &

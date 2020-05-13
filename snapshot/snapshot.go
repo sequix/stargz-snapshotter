@@ -31,7 +31,9 @@ import (
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/containerd/snapshots/storage"
 	"github.com/containerd/continuity/fs"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -78,11 +80,30 @@ type snapshotter struct {
 	fs FileSystem
 }
 
+type CtxRequestIDType struct{}
+var CtxRequestID  = CtxRequestIDType{}
+
+func WithRequestID(ctx context.Context) context.Context {
+	if ctx.Value(CtxRequestID) != nil {
+		return ctx
+	}
+	return context.WithValue(ctx, CtxRequestID, uuid.New().String())
+}
+
+func LF(ctx context.Context, function string) *logrus.Entry {
+	return log.G(ctx).WithField("requestID", ctx.Value(CtxRequestID)).
+		WithField("func", function)
+}
+
 // NewSnapshotter returns a Snapshotter which can use unpacked remote layers
 // as snapshots. This is implemented based on the overlayfs snapshotter, so
 // diffs are stored under the provided root and a metadata file is stored under
 // the root as same as overlayfs snapshotter.
 func NewSnapshotter(ctx context.Context, root string, targetFs FileSystem, opts ...Opt) (snapshots.Snapshotter, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "NewSnapshotter").Debugf("in root %s", root)
+	defer LF(ctx, "NewSnapshotter").Debugf("ot root %s", root)
+
 	if targetFs == nil {
 		return nil, fmt.Errorf("Specify filesystem to use")
 	}
@@ -128,6 +149,10 @@ func NewSnapshotter(ctx context.Context, root string, targetFs FileSystem, opts 
 // Should be used for parent resolution, existence checks and to discern
 // the kind of snapshot.
 func (o *snapshotter) Stat(ctx context.Context, key string) (snapshots.Info, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Stat").Debugf("in key %s", key)
+	defer LF(ctx, "Stat").Debugf("ot key %s", key)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, false)
 	if err != nil {
 		return snapshots.Info{}, err
@@ -137,11 +162,14 @@ func (o *snapshotter) Stat(ctx context.Context, key string) (snapshots.Info, err
 	if err != nil {
 		return snapshots.Info{}, err
 	}
-
 	return info, nil
 }
 
 func (o *snapshotter) Update(ctx context.Context, info snapshots.Info, fieldpaths ...string) (snapshots.Info, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Update").Debugf("in info.Name %s", info.Name)
+	defer LF(ctx, "Update").Debugf("ot info.Name %s", info.Name)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, true)
 	if err != nil {
 		return snapshots.Info{}, err
@@ -169,6 +197,10 @@ func (o *snapshotter) Update(ctx context.Context, info snapshots.Info, fieldpath
 //
 // For committed snapshots, the value is returned from the metadata database.
 func (o *snapshotter) Usage(ctx context.Context, key string) (snapshots.Usage, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Usage").Debugf("in key %s", key)
+	defer LF(ctx, "Usage").Debugf("ot key %s", key)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, false)
 	if err != nil {
 		return snapshots.Usage{}, err
@@ -196,6 +228,10 @@ func (o *snapshotter) Usage(ctx context.Context, key string) (snapshots.Usage, e
 }
 
 func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Prepare").Debugf("in key %s, parent %s", key, parent)
+	defer LF(ctx, "Prepare").Debugf("ot key %s, parent %s", key, parent)
+
 	s, err := o.createSnapshot(ctx, snapshots.KindActive, key, parent, opts)
 	if err != nil {
 		return nil, err
@@ -222,6 +258,10 @@ func (o *snapshotter) Prepare(ctx context.Context, key, parent string, opts ...s
 }
 
 func (o *snapshotter) View(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "View").Debugf("in key %s, parent %s", key, parent)
+	defer LF(ctx, "View").Debugf("ot key %s, parent %s", key, parent)
+
 	s, err := o.createSnapshot(ctx, snapshots.KindView, key, parent, opts)
 	if err != nil {
 		return nil, err
@@ -234,6 +274,10 @@ func (o *snapshotter) View(ctx context.Context, key, parent string, opts ...snap
 //
 // This can be used to recover mounts after calling View or Prepare.
 func (o *snapshotter) Mounts(ctx context.Context, key string) ([]mount.Mount, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Mounts").Debugf("in key %s", key)
+	defer LF(ctx, "Mounts").Debugf("ot key %s", key)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, false)
 	if err != nil {
 		return nil, err
@@ -247,6 +291,10 @@ func (o *snapshotter) Mounts(ctx context.Context, key string) ([]mount.Mount, er
 }
 
 func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snapshots.Opt) error {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Commit").Debugf("in name %s, key %s", name, key)
+	defer LF(ctx, "Commit").Debugf("ot name %s, key %s", name, key)
+	
 	ctx, t, err := o.ms.TransactionContext(ctx, true)
 	if err != nil {
 		return err
@@ -282,6 +330,10 @@ func (o *snapshotter) Commit(ctx context.Context, name, key string, opts ...snap
 // immediately become unavailable and unrecoverable. Disk space will
 // be freed up on the next call to `Cleanup`.
 func (o *snapshotter) Remove(ctx context.Context, key string) (err error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Remove").Debugf("in key %s", key)
+	defer LF(ctx, "Remove").Debugf("ot key %s", key)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, true)
 	if err != nil {
 		return err
@@ -327,6 +379,10 @@ func (o *snapshotter) Remove(ctx context.Context, key string) (err error) {
 
 // Walk the snapshots.
 func (o *snapshotter) Walk(ctx context.Context, fn snapshots.WalkFunc, fs ...string) error {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Walk").Debugf("in fs %s", fs)
+	defer LF(ctx, "Walk").Debugf("ot fs %s", fs)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, false)
 	if err != nil {
 		return err
@@ -337,11 +393,19 @@ func (o *snapshotter) Walk(ctx context.Context, fn snapshots.WalkFunc, fs ...str
 
 // Cleanup cleans up disk resources from removed or abandoned snapshots
 func (o *snapshotter) Cleanup(ctx context.Context) error {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "Cleanup").Debugf("in")
+	defer LF(ctx, "Cleanup").Debugf("ot")
+
 	const cleanupCommitted = false
 	return o.cleanup(ctx, cleanupCommitted)
 }
 
 func (o *snapshotter) cleanup(ctx context.Context, cleanupCommitted bool) error {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "cleanup").Debugf("in cleanupCommitted %s", cleanupCommitted)
+	defer LF(ctx, "cleanup").Debugf("ot cleanupCommitted %s", cleanupCommitted)
+
 	cleanup, err := o.cleanupDirectories(ctx, cleanupCommitted)
 	if err != nil {
 		return err
@@ -358,6 +422,10 @@ func (o *snapshotter) cleanup(ctx context.Context, cleanupCommitted bool) error 
 }
 
 func (o *snapshotter) cleanupDirectories(ctx context.Context, cleanupCommitted bool) ([]string, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "cleanupDirectories").Debugf("in cleanupCommitted %s", cleanupCommitted)
+	defer LF(ctx, "cleanupDirectories").Debugf("ot cleanupCommitted %s", cleanupCommitted)
+
 	// Get a write transaction to ensure no other write transaction can be entered
 	// while the cleanup is scanning.
 	ctx, t, err := o.ms.TransactionContext(ctx, true)
@@ -370,6 +438,10 @@ func (o *snapshotter) cleanupDirectories(ctx context.Context, cleanupCommitted b
 }
 
 func (o *snapshotter) getCleanupDirectories(ctx context.Context, t storage.Transactor, cleanupCommitted bool) ([]string, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "getCleanupDirectories").Debugf("in cleanupCommitted %s", cleanupCommitted)
+	defer LF(ctx, "getCleanupDirectories").Debugf("ot cleanupCommitted %s", cleanupCommitted)
+
 	ids, err := storage.IDMap(ctx)
 	if err != nil {
 		return nil, err
@@ -402,8 +474,11 @@ func (o *snapshotter) getCleanupDirectories(ctx context.Context, t storage.Trans
 }
 
 func (o *snapshotter) cleanupSnapshotDirectory(ctx context.Context, dir string) error {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "cleanupSnapshotDirectory").Debugf("in dir %s", dir)
+	defer LF(ctx, "cleanupSnapshotDirectory").Debugf("ot dir %s", dir)
 
-	// On a remote snapshot, the layer is mounted on the "fs" directory.
+	// On a remote snapshot the layer is mounted on the "fs" directory.
 	// Filesystem can do any finalization by detecting this "unmount" event
 	// and we don't care the finalization explicitly at this stage.
 	mp := filepath.Join(dir, "fs")
@@ -417,6 +492,10 @@ func (o *snapshotter) cleanupSnapshotDirectory(ctx context.Context, dir string) 
 }
 
 func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, key, parent string, opts []snapshots.Opt) (_ storage.Snapshot, err error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "createSnapshot").Debugf("in key %s, parent %s", key, parent)
+	defer LF(ctx, "createSnapshot").Debugf("ot key %s, parent %s", key, parent)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, true)
 	if err != nil {
 		return storage.Snapshot{}, err
@@ -492,6 +571,10 @@ func (o *snapshotter) createSnapshot(ctx context.Context, kind snapshots.Kind, k
 }
 
 func (o *snapshotter) prepareDirectory(ctx context.Context, snapshotDir string, kind snapshots.Kind) (string, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "prepareDirectory").Debugf("in snapshotDir %s, kind %s", snapshotDir, kind)
+	defer LF(ctx, "prepareDirectory").Debugf("ot snapshotDir %s, kind %s", snapshotDir, kind)
+
 	td, err := ioutil.TempDir(snapshotDir, "new-")
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create temp dir")
@@ -511,6 +594,10 @@ func (o *snapshotter) prepareDirectory(ctx context.Context, snapshotDir string, 
 }
 
 func (o *snapshotter) mounts(ctx context.Context, s storage.Snapshot, checkKey string) ([]mount.Mount, error) {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "mounts").Debugf("in s.ID %s, checkKey %s", s.ID, checkKey)
+	defer LF(ctx, "mounts").Debugf("ot s.ID %s, checkKey %s", s.ID, checkKey)
+
 	// Make sure that all layers lower than the target layer are available
 	if checkKey != "" && !o.checkAvailability(ctx, checkKey) {
 		return nil, errors.Wrapf(errdefs.ErrUnavailable, "layer %q unavailable", s.ID)
@@ -581,9 +668,13 @@ func (o *snapshotter) workPath(id string) string {
 
 // Close closes the snapshotter
 func (o *snapshotter) Close() error {
+	ctx := WithRequestID(context.Background())
+	LF(ctx, "Close").Debugf("in")
+	defer LF(ctx, "NewSnapshotter").Debugf("ot")
+
 	// unmount all mounts including Committed
 	const cleanupCommitted = true
-	ctx := context.Background()
+	//ctx := context.Background()
 	if err := o.cleanup(ctx, cleanupCommitted); err != nil {
 		log.G(ctx).WithError(err).Warn("failed to cleanup")
 	}
@@ -593,6 +684,10 @@ func (o *snapshotter) Close() error {
 // prepareRemoteSnapshot tries to prepare the snapshot as a remote snapshot
 // using filesystems registered in this snapshotter.
 func (o *snapshotter) prepareRemoteSnapshot(ctx context.Context, key string, labels map[string]string) error {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "prepareRemoteSnapshot").Debugf("in key %s, labels %s", key, labels)
+	defer LF(ctx, "prepareRemoteSnapshot").Debugf("ot key %s, labels %s", key, labels)
+
 	ctx, t, err := o.ms.TransactionContext(ctx, false)
 	if err != nil {
 		return err
@@ -615,6 +710,10 @@ func (o *snapshotter) prepareRemoteSnapshot(ctx context.Context, key string, lab
 // checkAvailability checks avaiability of the specified layer and all lower
 // layers using filesystem's checking functionality.
 func (o *snapshotter) checkAvailability(ctx context.Context, key string) bool {
+	ctx = WithRequestID(ctx)
+	LF(ctx, "checkAvailability").Debugf("in key %s", key)
+	defer LF(ctx, "checkAvailability").Debugf("ot key %s", key)
+
 	logCtx := log.G(ctx).WithField("key", key)
 	logCtx.Debug("checking layer availability")
 
